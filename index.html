@@ -1,0 +1,49 @@
+<!doctype html> 
+<html> 
+    <head>
+    <title>WebSockets Hello World</title>
+    <meta charset="utf-8" />
+    <style type="text/css">
+        body {
+        text-align: center;
+        min-width: 500px;
+        }
+    </style>
+    <script src="http://code.jquery.com/jquery.min.js"></script>
+    <script>
+
+        // log function
+        log = function(data){
+            $("div#terminal").prepend("</br>" +data);
+            console.log(data);
+        };
+
+        $(document).ready(function () {
+            $("div#message_details").hide()
+
+            var ws;
+
+            // create websocket instance
+            ws = new WebSocket("ws://localhost:8888/ws");
+
+            // Open Websocket callback
+            ws.onopen = function(evt) {
+            };
+
+            // Handle incoming websocket message callback
+            ws.onmessage = function(evt) {
+                log(evt.data)
+            };
+
+           // Close Websocket callback
+            ws.onclose = function(evt) {
+            };
+
+        });
+    </script>
+    </head>
+
+    <body>
+        <div id="terminal"></div>
+    </body>
+</html>

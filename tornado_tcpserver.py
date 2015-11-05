@@ -1,13 +1,15 @@
 import socket
 
 import tornado.gen
-import tornado.ioloop
-import tornado.iostream
-import tornado.tcpserver
+from tornado.iostream import StreamClosedError
+from tornado.tcpserver import TCPServer
+from tornado.httpserver import HTTPServer
+from tornado.websocket import WebSocketHandler
+from tornado.web import Application, RequestHandler
+from tornado.ioloop import IOLoop
 
 
 class SimpleTcpClient(object):
-
     def __init__(self, stream):
         self.stream = stream
 
@@ -31,37 +33,60 @@ class SimpleTcpClient(object):
     @tornado.gen.coroutine
     def dispatch_client(self):
         try:
+            is_auth = False
+            src_name = ''
             while True:
-                auth = yield self.stream.read_until(b'\n')
-                src = auth.split('::')
+                message = yield self.stream.read_until(b'\n')
+                msg = message.split('::')
 
-                if src[0] == 'Auth':
-                    src_name = src[1].decode('utf-8').strip()
+                if msg[0] == 'Auth':
+                    is_auth = True
+                    src_name = msg[1].split('\n')[0]
+                elif msg[0] == 'End':
+                    is_auth = False
+                elif is_auth:
+                    msg_key = msg[0].decode('utf-8').strip()
+                    msg_value = msg[1].decode('utf-8').strip()
 
-                    msg = yield self.stream.read_until(b'End\n')
-                    msg = msg.split('\n')
+                    self.log(src_name, '%s | %s' % (msg_key, msg_value))
 
-                    for i in msg:
-                        if i == 'End':
-                            break
-                        msg_key = i.split('::')[0].decode('utf-8').strip()
-                        msg_value = i.split('::')[1].decode('utf-8').strip()
+                    # [con.write_message('Yeah!!!') for con in WSHandler.connections]
 
-                        self.log(src_name, '%s | %s' % (msg_key, msg_value))
+        except StreamClosedError:
+            self.log('Error: ', 'StreamClosedError')
 
-        except tornado.iostream.StreamClosedError:
-            self.log(src_name, 'StreamClosedError')
 
-class SimpleTcpServer(tornado.tcpserver.TCPServer):
-
+class SimpleTcpServer(TCPServer):
     @tornado.gen.coroutine
     def handle_stream(self, stream, address):
-        """
-        Called for each new connection, stream.socket is
-        a reference to socket object
-        """
         connection = SimpleTcpClient(stream)
         yield connection.on_connect()
+
+
+class WSHandler(WebSocketHandler):
+    connections = set()
+
+    def open(self):
+        self.connections.add(self)
+        print 'new connection'
+
+    def on_message(self, message):
+        pass
+
+    def on_close(self):
+        self.connections.remove(self)
+        print 'connection closed'
+
+
+class IndexHandler(RequestHandler):
+    def get(self):
+        self.render("index.html")
+
+
+application = Application([
+    (r'/', IndexHandler),
+    (r'/ws', WSHandler),
+])
 
 
 def main():
@@ -69,13 +94,17 @@ def main():
     host = 'localhost'
     port = 8008
 
+    # # http server
+    http_server = HTTPServer(application)
+    http_server.listen(8888)
+
     # tcp server
     server = SimpleTcpServer()
     server.listen(port, host)
     print("Listening on %s:%d..." % (host, port))
 
     # infinite loop
-    tornado.ioloop.IOLoop.instance().start()
+    IOLoop.instance().start()
 
 
 if __name__ == "__main__":
