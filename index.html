@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <style type="text/css">
         body {
-        text-align: center;
+        text-align: left;
         min-width: 500px;
         }
     </style>
@@ -14,17 +14,16 @@
 
         // log function
         log = function(data){
-            $("div#terminal").prepend("</br>" +data);
+            $("div#terminal").prepend("</br>" + data);
             console.log(data);
         };
 
         $(document).ready(function () {
-            $("div#message_details").hide()
-
+            var uri = window.location.href.split('://');
             var ws;
 
             // create websocket instance
-            ws = new WebSocket("ws://localhost:8888/ws");
+            ws = new WebSocket("ws://" + uri[1] + "ws");
 
             // Open Websocket callback
             ws.onopen = function(evt) {
