@@ -4,9 +4,13 @@
     <title>WebSockets Hello World</title>
     <meta charset="utf-8" />
     <style type="text/css">
-        body {
-        text-align: left;
-        min-width: 500px;
+        .terminal {
+            text-align: center;
+            min-width: 500px;
+        }
+        .online {
+            text-align: left;
+            min-width: 500px;
         }
     </style>
     <script src="http://code.jquery.com/jquery.min.js"></script>
@@ -15,6 +19,11 @@
         // log function
         log = function(data){
             $("div#terminal").prepend("</br>" + data);
+            console.log(data);
+        };
+
+        online = function(data){
+            document.getElementById("online").innerHTML = data;
             console.log(data);
         };
 
@@ -31,7 +40,11 @@
 
             // Handle incoming websocket message callback
             ws.onmessage = function(evt) {
-                log(evt.data)
+                if (evt.data.charAt(0) == "&") {
+                    online(evt.data.substr(1));
+                } else {
+                    log(evt.data);
+                }
             };
 
            // Close Websocket callback
@@ -43,6 +56,10 @@
     </head>
 
     <body>
-        <div id="terminal"></div>
+        <div class="online">
+            <div>Online sources:</div>
+            <div id="online"></div>
+        </div>
+        <div class="terminal" id="terminal"></div>
     </body>
 </html>

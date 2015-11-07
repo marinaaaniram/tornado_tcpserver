@@ -16,6 +16,7 @@ define('host', default='localhost')
 
 
 class SimpleTcpClient(object):
+    sources = set()
     def __init__(self, stream):
         self.stream = stream
 
@@ -36,6 +37,10 @@ class SimpleTcpClient(object):
     def log(self, src_name, msg, *args, **kwargs):
         print('[%s] %s' % (src_name, msg.format(*args, **kwargs)))
 
+    def src_online(self):
+        online_src = "</br>".join(str(x) for x in self.sources)
+        [con.write_message('&%s' % online_src) for con in WSHandler.connections]
+
     @tornado.gen.coroutine
     def dispatch_client(self):
         try:
@@ -45,22 +50,26 @@ class SimpleTcpClient(object):
                 message = yield self.stream.read_until(b'\n')
 
                 if message == 'End\n':
-                	is_auth = False
-                	continue
+                    is_auth = False
+                    self.sources.remove(src_name)
+                    self.src_online()
+                    continue
 
                 msg = message.split(':: ')
 
                 if msg[0] == 'Auth' and len(msg) > 1:
-                	is_auth = True
-                	src_name = msg[1].split('\n')[0]
-                	continue
+                    is_auth = True
+                    src_name = msg[1].split('\n')[0]
+                    self.sources.add(src_name)
+                    self.src_online()
+                    continue
 
                 if is_auth and len(msg) > 1:
-	                msg_key = msg[0].decode('utf-8').strip()
-	                msg_value = msg[1].decode('utf-8').strip()
+                    msg_key = msg[0].decode('utf-8').strip()
+                    msg_value = msg[1].decode('utf-8').strip()
 
-	                self.log(src_name, '%s | %s' % (msg_key, msg_value))
-	                [con.write_message('[%s] %s | %s' % (src_name, msg_key, msg_value)) for con in WSHandler.connections]
+                    self.log(src_name, '%s | %s' % (msg_key, msg_value))
+                    [con.write_message('[%s] %s | %s' % (src_name, msg_key, msg_value)) for con in WSHandler.connections]
 
         except StreamClosedError:
             self.log('Error', 'StreamClosedError')
